@@ -1,2 +1,2 @@
-# main
-Main repository
+# Data analysis
+Repository for data analysis
