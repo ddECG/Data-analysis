@@ -6,6 +6,10 @@ Repository for data analysis for the DDA and DDSA data science challange. Our ma
 
 Depending on analysis apprach, data must likely all be converted to h5py format.
 
+## Functions
+#### Convert wfdb files contained within a folder to h5py
+```python convert_hdf5.py INPUT_FOLDER OUTPUT_FILE```
+
 # Datasets
 ### PTB-xl
 **Analysis approach**
