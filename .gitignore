@@ -9,6 +9,9 @@ __pycache__/
 
 # Raw data
 data-raw/ptb-xl
+data-raw/code-15
+data-raw/cardiovascular_complications
+data-raw/test
 
 # Distribution / packaging
 .Python
