@@ -1,17 +1,17 @@
 # Data analysis
 Repository for data analysis for the DDA and DDSA data science challange. Our main goal for the challange is to use transfer learning from a large model, and apply it to a smaller dataset to predict a different outcome. We are working with the following datasets:
 * **PTB-xl**: 21837 12-lead ECGs from 18885 patients. 
-* **Code 15%**:
-* **Cardiovascular complications**: 
+* **Code 15%**: TODO
+* **Cardiovascular complications**: TODO
 
 Depending on analysis apprach, data must likely all be converted to h5py format.
 
 ## Functions
 #### Convert wfdb files contained within a folder to h5py
-```python convert_hdf5.py INPUT_FOLDER OUTPUT_FILE```
+  ```python convert_hdf5.py INPUT_FOLDER OUTPUT_FILE```
 
 # Datasets
-### PTB-xl
+### 1 - PTB-xl
 **Analysis approach**
 Several steps should be taken before analysis of the PTB-xl dataset.
 
@@ -37,8 +37,18 @@ After cleaning we must probably convert data to h5py binary format to be compati
 
 **Download raw data**
 Raw data can be downloaded by:
+### 4 - Code 15
+**Analysis approach**
+Great dataset with 12 lead ECGs. One can download pretrained models for age prediction.
 
-### Cardiovascular complications
+**Data format**
+* Is in the hdf5 format.
+* wfdb can be converted to hdf5 by using the `convert_hdf5.py` function
+
+**Download raw data**
+TODO
+
+### 3 - Cardiovascular complications
 **Analysis approach**
 This dataset is not particularly organised and needs alot of data cleaning to be comparable to other datasets.
 
@@ -49,10 +59,14 @@ Raw data can be downloaded by:
 ```
 # Notes
 ### Data storage
-Raw data should be stored as unpacked folders in the 'data-raw/' folder. The following folder structures should be used:
+Raw data should be stored as unpacked folders in the `'data-raw/'` folder. The following folder structures should be used:
 * 'data-raw/ptb-xl/'
 * 'data-raw/code-15/'
 * 'data-raw/cadiovascular_complications/'
+* 'data-raw/test/'
+
+Edited data is stored in the `'data/'` folder. The following folders can be used.
+* 'data/test/'
 
 ### Contributing
 When writing or updating code, create a new branch. Best practice is to do the following:
