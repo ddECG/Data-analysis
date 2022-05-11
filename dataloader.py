@@ -1,87 +1,133 @@
-# Imports
+from itertools import count
 import torch
 from torch.utils.data import Dataset
+import h5py
 from pathlib import Path
 import numpy as np
-import h5py
 
-# Class
 class H5Dataset(Dataset):
     """ HDF5 dataset loader.
 
     Args:
         file_path (str): Path to folder containing several or a single hdf5 file.
         data_cache_size (int): TODO
-        transform (optional): Optional transform to be applied to samples.
+        transform (optional): TODO - Optional transform to be applied to samples.
     """
-
+    
     # Constructor
-    def __init__(self, file_path: str, data_cache_size=3, transform=None) -> None:
+    def __init__(self, file_path: str):
+
+        # Variables
         super().__init__()
+        self.annotations = []
+        self.file_path = file_path
+        self.files = None
+        self.data_cache = None
+        self.len = None
 
-        # Constants
-        self.data_info = []
-        self.data_cache = {}
-        self.data_cache_size = data_cache_size
-        self.transform = transform
+        # Load files
+        self.set_files(self.file_path)
 
-        # Find hdf5 files
+        # Set file annotations
+        try:
+            for file in self.files:
+                self.set_annotations(file)
+        except TypeError:
+            self.set_annotations(self.files)
+
+        # Get length
+        self.set_length()
+
+        # Debug
+        # print(self.annotations)
+        # print(self.get_annotations('exam_id', 1))
+        # print(self.annotations[2])
+        # print(self.get_annotations(1)[0]['cache'])
+        # print(self.get_data(1))
+        # print(self.get_data('exam_id', 1))
+        # print(self.data_cache)
+        
+    # Magic methods
+    def __getitem__(self, idx: int):
+        """
+        Gets items and returns as tensor
+        """
+        # Read data
+        data = self.get_data(idx=idx)
+
+        # Return
+        return data
+
+    def __len__(self):
+        """ Length of dataset """
+        return self.len
+    
+    # Getters
+    def get_annotations(self, idx:int):
+        """ Extract dict of specific type and at index""" 
+        
+        # Extract ID
+        id = self.annotations[idx]['id']
+        
+        # Get dict
+        dat = [di for di in self.annotations if di['id'] == id]
+
+        # Return
+        return(dat)
+    
+    def get_data(self, idx: int):
+        """ Load data into cache """
+        # Get file info
+        annotation_trace = self.get_annotations(idx)[0]
+        annotation_label = self.get_annotations(idx)[1]
+        path = annotation_trace['file_path']
+
+        # Check if data in cache
+        if annotation_trace['cache'] or annotation_label['cache']:
+            dat = self.data_cache
+            print("Data is already loaded (Cache is 1)")
+            return(dat)
+        
+        # Extract data (and convert to tensor)
+        with h5py.File(path) as f:
+            tracings = f['tracings'][idx,:,:]
+            tracings = torch.from_numpy(tracings)
+            label = f['exam_id'][idx]
+            label = torch.from_numpy(np.array(label))
+        dat = tracings, label
+
+        # Update cache
+        self.set_cache(dat, idx)
+        
+        # Return
+        return(dat)
+    
+    # Setters
+    def set_files(self, file_path):
+        """ Finds single file or all hdf5 files within folder. Is not recursive (YET) """
         path = Path(file_path)
         if path.is_dir():
             files = sorted(path.glob('*.hdf5'))
         else:
             files = path
 
-        # Build data structure info
-        for file in files:
-            self._set_info(file)
+        self.files = files
 
-        # Debug
-
-    # Magic methods
-    def __len__(self):
-        """
-        Returns size of dataset
-        """
-        return(len(self._get_type_info('exam_id')))
-    
-    def __getitem__(self, index: int):
-        """
-        Gets items and returns as tensor
-        """
-
-        # Read data (to tensor)
-        data = self.read_data('tracings', index)
-
-        if self.transform:
-            data = self.transform(data)
-        else:
-            data = torch.from_numpy(data)
+    def set_cache(self, dat, idx):
+        """ Stores data into cache data. Can currently only hold 1 data point """
+        # Set cache
+        self.data_cache = dat
         
-        # Get label
-        label = self.read_data('exam_id', index)
-        label = torch.from_numpy(np.array(label))
+        # Update data annotations
+        self.annotations[idx].update({'cache': 1})
+        self.annotations[idx + 1].update({'cache': 1}) 
 
-        # Transform 
-        if self.transform:
-            data = 1
-        # TODO
-        
-        # Return
-        return(data, label)
+    def set_length(self):
+        """ Sets length of dataset """
+        self.len = int(len(self.annotations) / 2)
     
-    # Setters
-    def load_data(self, file_path: str):
-        """
-        Loads data into cache
-        """
-        with h5py.File(file_path) as h5_file:
-            pass
-
-    def _set_info(self, file_path):
-        # Convert path to string
-        file_path = str(file_path.resolve())
-
+    def set_annotations(self, file_path):
+        """ Sets data annotations """
         # Set info (remove 1st dimension of traces as this is scan ID)
         with h5py.File(file_path) as file:
             tracings = file['tracings']
@@ -89,30 +135,5 @@ class H5Dataset(Dataset):
 
             # print(tracings.shape)
             for i in range(len(tracings)):
-                self.data_info.append({'file_path': file_path, 'type': 'tracings', 'shape': tracings[i,:,:].shape})
-                self.data_info.append({'file_path': file_path, 'type': 'exam_id', 'shape': 1})
-
-    # Getters
-    def read_data(self, type, i):
-        """
-        Reads data. Will make sure data is loaded if its not already in cache.
-        """
-        
-        # Get file path
-        file_path = self._get_type_info(type)[i]['file_path']
-
-        # Load data
-        with h5py.File(file_path) as h5_file:
-            if type == 'tracings':
-                data = h5_file[type][i,:,:]
-            elif type == 'exam_id':
-                data = h5_file[type][i]
-        
-        return(data)
-
-    def _get_type_info(self, type):
-        """
-        Extract info for a specified type of data
-        """
-        extracted_data = [extracted for extracted in self.data_info if extracted['type'] == type]
-        return(extracted_data)
+                self.annotations.append({'id': exam_id[i], 'file_path': file_path, 'type': 'tracings', 'shape': tracings[i,:,:].shape, 'cache': 0})
+                self.annotations.append({'id': exam_id[i], 'file_path': file_path, 'type': 'exam_id', 'shape': exam_id[i].shape, 'cache': 0})
